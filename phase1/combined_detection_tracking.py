@@ -176,7 +176,8 @@ def annotate_frame(frame, boxes, model, depth_model=None, enable_depth=False, de
     return frame, detections
 
 
-def process_video(yolo_model, depth_model, source, output_video_path, output_json_path, enable_depth, show_video, device):
+def process_video(yolo_model, depth_model, source, output_video_path, output_json_path, 
+                  enable_depth, show_video, device, target_fps=10):
     """
     Process video with YOLO tracking and optional depth estimation.
     
@@ -189,25 +190,31 @@ def process_video(yolo_model, depth_model, source, output_video_path, output_jso
         enable_depth: Whether to enable depth estimation.
         show_video: Whether to display video in real-time.
         device: Device to run models on.
+        target_fps: Target FPS for processing (default: 10).
     """
     cap = cv2.VideoCapture(source)
     if not cap.isOpened():
         raise ValueError(f"Could not open video source: {source}")
     
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    original_fps = int(cap.get(cv2.CAP_PROP_FPS))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
+    # Calculate frame skip interval
+    frame_skip = max(1, original_fps // target_fps)
+    
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
+    out = cv2.VideoWriter(output_video_path, fourcc, target_fps, (width, height))
     
     print(f"\nProcessing video: {source}")
+    print(f"Original FPS: {original_fps}, Processing at: {target_fps} FPS (skipping every {frame_skip} frames)")
     print(f"Output video: {output_video_path}")
     print(f"Output JSON: {output_json_path}")
     print(f"Depth estimation: {'ENABLED' if enable_depth else 'DISABLED'}")
-    print(f"Resolution: {width}x{height}, FPS: {fps}\n")
+    print(f"Resolution: {width}x{height}\n")
     
     frame_count = 0
+    processed_count = 0
     all_detections = []
     
     while True:
@@ -217,8 +224,14 @@ def process_video(yolo_model, depth_model, source, output_video_path, output_jso
         
         frame_count += 1
         
-        if frame_count % 30 == 0:
-            print(f"Processing frame {frame_count}...")
+        # Skip frames to achieve target FPS
+        if frame_count % frame_skip != 0:
+            continue
+        
+        processed_count += 1
+        
+        if processed_count % 10 == 0:
+            print(f"Processed {processed_count} frames (original frame {frame_count})...")
         
         # Run YOLO tracking
         results = yolo_model.track(frame, persist=True, verbose=False, tracker="bytetrack.yaml")
@@ -237,6 +250,7 @@ def process_video(yolo_model, depth_model, source, output_video_path, output_jso
         # Store detections with frame info
         for det in detections:
             det["frame_no"] = frame_count
+            det["processed_frame_no"] = processed_count
             all_detections.append(det)
         
         # Write frame
@@ -251,7 +265,10 @@ def process_video(yolo_model, depth_model, source, output_video_path, output_jso
     # Save JSON output
     json_output = {
         "timestamp": datetime.now().isoformat(),
+        "original_fps": original_fps,
+        "processing_fps": target_fps,
         "total_frames": frame_count,
+        "processed_frames": processed_count,
         "detections": all_detections
     }
     
@@ -267,31 +284,38 @@ def process_video(yolo_model, depth_model, source, output_video_path, output_jso
     print(f"✓ Video saved: {output_video_path}")
     print(f"✓ JSON saved: {output_json_path}")
     print(f"✓ Total frames: {frame_count}")
+    print(f"✓ Processed frames: {processed_count}")
     print(f"✓ Total detections: {len(all_detections)}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Combined YOLO Detection + Tracking with Optional Depth Estimation")
-    parser.add_argument("--yolo-model", type=str, default="Weights/best.pt", help="Path to YOLO weights file")
+    parser.add_argument("--yolo-model", type=str, default="Weights/best.onnx", help="Path to YOLO weights file (.pt, .onnx, .engine)")
     parser.add_argument("--depth-model", type=str, default="weights/FastDepthV2_L1GN_Best.pth", help="Path to FastDepth weights file")
     parser.add_argument("--source", type=str, default="videos/check.mp4", help="Path to input video")
     parser.add_argument("--output-video", type=str, default="output/output_video.mp4", help="Output video path")
     parser.add_argument("--output-json", type=str, default="output/output.json", help="Output JSON path")
     parser.add_argument("--enable-depth", action="store_true", help="Enable depth estimation and direction detection")
     parser.add_argument("--no-display", action="store_true", help="Disable real-time video display")
+    parser.add_argument("--target-fps", type=int, default=10, help="Target FPS for processing (default: 10)")
     
     args = parser.parse_args()
     
     try:
-        # Load YOLO model
+        # Load YOLO model (supports .pt, .onnx, .engine formats)
         print("Loading YOLO model...")
         if not os.path.exists(args.yolo_model):
             raise FileNotFoundError(f"YOLO model not found: {args.yolo_model}")
         
         yolo_model = YOLO(args.yolo_model)
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        yolo_model.to(device)
-        print(f"✓ YOLO model loaded on {device}")
+        
+        # For .pt models, explicitly set device
+        if args.yolo_model.endswith('.pt'):
+            yolo_model.to(device)
+        
+        model_type = args.yolo_model.split('.')[-1].upper()
+        print(f"✓ YOLO model loaded ({model_type} format) on {device}")
         
         # Load FastDepth model if depth estimation is enabled
         depth_model = None
@@ -319,14 +343,15 @@ def main():
         # Process video
         show_video = not args.no_display
         process_video(
-            yolo_model,
-            depth_model,
-            args.source,
-            args.output_video,
-            args.output_json,
-            args.enable_depth,
-            show_video,
-            device
+            yolo_model=yolo_model,
+            depth_model=depth_model,
+            source=args.source,
+            output_video_path=args.output_video,
+            output_json_path=args.output_json,
+            enable_depth=args.enable_depth,
+            show_video=show_video,
+            device=device,
+            target_fps=args.target_fps
         )
         
     except Exception as e:
