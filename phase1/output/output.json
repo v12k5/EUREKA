@@ -1,427 +1,371 @@
 {
-  "timestamp": "2025-11-02T18:51:22.841086",
-  "original_fps": 30,
-  "processing_fps": 10,
-  "total_frames": 87,
-  "processed_frames": 29,
+  "timestamp": "2025-11-02T23:17:33.203398",
   "detections": [
     {
-      "id": 1,
-      "label": "window",
       "bbox": [
         948.009765625,
         190.33575439453125,
         1067.334716796875,
         633.6749267578125
       ],
-      "direction": "center",
+      "confidence": 0.5869525074958801,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": 1,
       "distance_m": 2.48,
+      "direction": "center",
       "frame_no": 3,
       "processed_frame_no": 1
     },
     {
-      "id": 1,
-      "label": "window",
       "bbox": [
         982.3339233398438,
         190.85794067382812,
         1099.9539794921875,
         627.5707397460938
       ],
-      "direction": "center",
+      "confidence": 0.6450570225715637,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": 1,
       "distance_m": 2.5,
+      "direction": "center",
       "frame_no": 6,
       "processed_frame_no": 2
     },
     {
-      "id": 1,
-      "label": "window",
       "bbox": [
         1021.6624145507812,
         173.98190307617188,
         1140.9700927734375,
         616.7319946289062
       ],
-      "direction": "center",
+      "confidence": 0.5903094410896301,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": 1,
       "distance_m": 2.46,
+      "direction": "center",
       "frame_no": 9,
       "processed_frame_no": 3
     },
     {
-      "id": 1,
-      "label": "window",
       "bbox": [
         1065.984130859375,
         163.345947265625,
         1187.29833984375,
         613.2874755859375
       ],
-      "direction": "center",
+      "confidence": 0.6193680763244629,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": 1,
       "distance_m": 2.26,
+      "direction": "center",
       "frame_no": 12,
       "processed_frame_no": 4
     },
     {
-      "id": 1,
-      "label": "window",
       "bbox": [
         1111.833740234375,
         132.6675567626953,
         1239.7276611328125,
         608.1986083984375
       ],
-      "direction": "center",
+      "confidence": 0.7546685934066772,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": 1,
       "distance_m": 2.26,
+      "direction": "center",
       "frame_no": 15,
       "processed_frame_no": 5
     },
     {
-      "id": 1,
-      "label": "window",
       "bbox": [
         1148.094482421875,
         106.69841003417969,
         1275.0360107421875,
         584.3037719726562
       ],
-      "direction": "top",
+      "confidence": 0.5328947305679321,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": 1,
       "distance_m": 2.17,
+      "direction": "top",
       "frame_no": 18,
       "processed_frame_no": 6
     },
     {
-      "id": null,
-      "label": "window",
       "bbox": [
         1049.0711669921875,
         164.96603393554688,
         1129.3099365234375,
         529.4143676757812
       ],
-      "direction": "top",
+      "confidence": 0.4332849085330963,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": null,
       "distance_m": 1.86,
+      "direction": "top",
       "frame_no": 21,
       "processed_frame_no": 7
     },
     {
-      "id": null,
-      "label": "window",
       "bbox": [
         712.2932739257812,
         196.957763671875,
         820.9788208007812,
         483.24957275390625
       ],
-      "direction": "top",
+      "confidence": 0.37842869758605957,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": null,
       "distance_m": 1.61,
+      "direction": "top",
       "frame_no": 21,
       "processed_frame_no": 7
     },
     {
-      "id": null,
-      "label": "window",
       "bbox": [
         1212.27978515625,
         103.40469360351562,
         1260.2415771484375,
         571.405029296875
       ],
-      "direction": "top",
+      "confidence": 0.28193992376327515,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": null,
       "distance_m": 1.5,
+      "direction": "top",
       "frame_no": 21,
       "processed_frame_no": 7
     },
     {
-      "id": null,
-      "label": "window",
       "bbox": [
         1103.2225341796875,
         146.00335693359375,
         1171.833251953125,
         531.8054809570312
       ],
-      "direction": "top",
+      "confidence": 0.5236018300056458,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": null,
       "distance_m": 1.6,
+      "direction": "top",
       "frame_no": 24,
       "processed_frame_no": 8
     },
     {
-      "id": null,
-      "label": "window",
       "bbox": [
         755.5208129882812,
         202.155029296875,
         860.8569946289062,
         484.1036682128906
       ],
-      "direction": "top",
+      "confidence": 0.34555965662002563,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": null,
       "distance_m": 1.64,
-      "frame_no": 24,
-      "processed_frame_no": 8
-    },
-    {
-      "id": null,
-      "label": "window",
-      "bbox": [
-        1072.010009765625,
-        133.22360229492188,
-        1166.058837890625,
-        536.956787109375
-      ],
       "direction": "top",
-      "distance_m": 1.6,
       "frame_no": 24,
       "processed_frame_no": 8
     },
     {
-      "id": null,
-      "label": "window",
       "bbox": [
         1124.9110107421875,
         109.10147094726562,
         1207.0782470703125,
         551.5322265625
       ],
-      "direction": "top",
+      "confidence": 0.5879743099212646,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": null,
       "distance_m": 1.8,
+      "direction": "top",
       "frame_no": 27,
       "processed_frame_no": 9
     },
     {
-      "id": 11,
-      "label": "window",
       "bbox": [
         1152.0330810546875,
         117.37371826171875,
         1231.647216796875,
         545.4700927734375
       ],
-      "direction": "top",
+      "confidence": 0.7624964118003845,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": 11,
       "distance_m": 1.61,
+      "direction": "top",
       "frame_no": 30,
       "processed_frame_no": 10
     },
     {
-      "id": 11,
-      "label": "window",
       "bbox": [
         1172.9815673828125,
         102.91326141357422,
         1257.3953857421875,
         558.0789184570312
       ],
-      "direction": "top",
+      "confidence": 0.6477140188217163,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": 11,
       "distance_m": 1.75,
+      "direction": "top",
       "frame_no": 33,
       "processed_frame_no": 11
     },
     {
-      "id": 11,
-      "label": "window",
       "bbox": [
         1183.765380859375,
         86.52435302734375,
         1270.9765625,
         559.792236328125
       ],
-      "direction": "top",
+      "confidence": 0.6249697208404541,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": 11,
       "distance_m": 1.67,
+      "direction": "top",
       "frame_no": 36,
       "processed_frame_no": 12
     },
     {
-      "id": 11,
-      "label": "window",
-      "bbox": [
-        1192.277099609375,
-        75.34967041015625,
-        1280.1453857421875,
-        558.4152221679688
-      ],
-      "direction": "top",
-      "distance_m": 1.56,
-      "frame_no": 39,
-      "processed_frame_no": 13
-    },
-    {
-      "id": null,
-      "label": "window",
-      "bbox": [
-        889.1790771484375,
-        193.77035522460938,
-        979.3015747070312,
-        471.6783142089844
-      ],
-      "direction": "top",
-      "distance_m": 1.55,
-      "frame_no": 42,
-      "processed_frame_no": 14
-    },
-    {
-      "id": null,
-      "label": "window",
       "bbox": [
         898.8754272460938,
         189.377197265625,
         984.6297607421875,
         464.9249267578125
       ],
-      "direction": "top",
+      "confidence": 0.27650734782218933,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": null,
       "distance_m": 1.61,
+      "direction": "top",
       "frame_no": 45,
       "processed_frame_no": 15
     },
     {
-      "id": null,
-      "label": "window",
       "bbox": [
         911.0289916992188,
         185.1141357421875,
         988.3368530273438,
         461.91522216796875
       ],
-      "direction": "top",
+      "confidence": 0.25023698806762695,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": null,
       "distance_m": 1.52,
+      "direction": "top",
       "frame_no": 48,
       "processed_frame_no": 16
     },
     {
-      "id": null,
-      "label": "window",
-      "bbox": [
-        914.3031005859375,
-        168.83395385742188,
-        999.175048828125,
-        459.71429443359375
-      ],
-      "direction": "top",
-      "distance_m": 1.56,
-      "frame_no": 51,
-      "processed_frame_no": 17
-    },
-    {
-      "id": null,
-      "label": "window",
       "bbox": [
         932.1475219726562,
         166.19879150390625,
         1006.9700927734375,
         455.1612854003906
       ],
-      "direction": "top",
+      "confidence": 0.3075263500213623,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": null,
       "distance_m": 1.54,
+      "direction": "top",
       "frame_no": 54,
       "processed_frame_no": 18
     },
     {
-      "id": null,
-      "label": "window",
       "bbox": [
         941.0076293945312,
         162.08065795898438,
         1016.2683715820312,
         457.22076416015625
       ],
-      "direction": "top",
+      "confidence": 0.29527735710144043,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": null,
       "distance_m": 1.49,
+      "direction": "top",
       "frame_no": 57,
       "processed_frame_no": 19
     },
     {
-      "id": 17,
-      "label": "window",
       "bbox": [
         949.3087768554688,
         167.96389770507812,
         1023.1405639648438,
         457.36444091796875
       ],
-      "direction": "top",
+      "confidence": 0.5539271235466003,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": 17,
       "distance_m": 1.54,
+      "direction": "top",
       "frame_no": 60,
       "processed_frame_no": 20
     },
     {
-      "id": 17,
-      "label": "window",
       "bbox": [
         972.6353149414062,
         146.68177795410156,
         1049.3990478515625,
         447.56524658203125
       ],
-      "direction": "top",
+      "confidence": 0.596782922744751,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": 17,
       "distance_m": 1.59,
+      "direction": "top",
       "frame_no": 66,
       "processed_frame_no": 22
     },
     {
-      "id": 17,
-      "label": "window",
-      "bbox": [
-        993.7460327148438,
-        146.8178253173828,
-        1069.619384765625,
-        443.7273864746094
-      ],
-      "direction": "top",
-      "distance_m": 1.52,
-      "frame_no": 69,
-      "processed_frame_no": 23
-    },
-    {
-      "id": null,
-      "label": "window",
-      "bbox": [
-        1075.353271484375,
-        150.15087890625,
-        1151.3592529296875,
-        463.68292236328125
-      ],
-      "direction": "top",
-      "distance_m": 1.39,
-      "frame_no": 78,
-      "processed_frame_no": 26
-    },
-    {
-      "id": null,
-      "label": "window",
       "bbox": [
         1108.1092529296875,
         156.59371948242188,
         1192.900146484375,
         473.2814025878906
       ],
-      "direction": "top",
+      "confidence": 0.33855023980140686,
+      "class_id": 5,
+      "class_name": "window",
+      "track_id": null,
       "distance_m": 1.49,
+      "direction": "top",
       "frame_no": 81,
       "processed_frame_no": 27
     },
     {
-      "id": null,
-      "label": "tv",
-      "bbox": [
-        656.7986450195312,
-        154.2930908203125,
-        908.08984375,
-        409.82281494140625
-      ],
-      "direction": "top",
-      "distance_m": 1.79,
-      "frame_no": 84,
-      "processed_frame_no": 28
-    },
-    {
-      "id": null,
-      "label": "tv",
       "bbox": [
         657.1025390625,
         161.40994262695312,
         953.4158935546875,
         416.8373107910156
       ],
-      "direction": "top",
+      "confidence": 0.38571369647979736,
+      "class_id": 3,
+      "class_name": "tv",
+      "track_id": null,
       "distance_m": 1.7,
+      "direction": "top",
       "frame_no": 87,
       "processed_frame_no": 29
     }

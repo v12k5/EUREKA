@@ -1,13 +1,9 @@
-# requirements.txt
-# NOTE: install PyTorch separately using the official instructions for your CUDA version:
-#   https://pytorch.org/get-started/locally/
-# Example (CPU-only): pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cpu
-
-torch>=1.12.0        # pick the correct build for your CUDA; see PyTorch site
+# Minimal requirements.txt
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+opencv-python>=4.8.0
+Pillow>=10.0.0
 ultralytics>=8.0.0
-opencv-python
-numpy
-pyyaml
-pillow
+onnxruntime>=1.15.0
 h5py
-torchvision
