@@ -8,3 +8,6 @@ ultralytics>=8.0.0
 opencv-python
 numpy
 pyyaml
+pillow
+h5py
+torchvision
