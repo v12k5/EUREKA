@@ -1,411 +1,384 @@
 """
-Phase 2 - OPTIMIZED OCR Workflow with Spatial Context Fusion
-Target: Process center frame of video with direction and distance
+Phase 2 - Medical OCR Processor (Optimized)
+Processes input images and outputs structured JSON results
 """
 
 import cv2
 import numpy as np
+import torch
 import json
-import logging
 from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Optional
-from paddleocr import PaddleOCR
+from PIL import Image
+from transformers import DonutProcessor, VisionEncoderDecoderModel
+import logging
 import time
+import os
+import sys
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
-class FastOCRProcessor:
-    """Optimized OCR processor with spatial context"""
+class MedicalOCRProcessor:
+    """Medical text OCR processor using Donut-based model"""
     
-    def __init__(self, lang='en', confidence_threshold=0.75):
-        """Initialize FAST OCR processor with mobile models"""
-        logger.info("Initializing Fast PaddleOCR (mobile models)...")
-        start_time = time.time()
+    def __init__(self, model_name="chinmays18/medical-prescription-ocr"):
+        """Initialize the medical OCR model"""
+        logger.info("Loading Medical OCR model...")
         
         try:
-            self.ocr = PaddleOCR(
-                lang=lang,
-                use_doc_preprocessor=False,
-                use_doc_orientation_classify=False,
-                use_textline_orientation=False,
-            )
-        except Exception as e:
-            logger.warning(f"Using minimal OCR config due to: {e}")
-            self.ocr = PaddleOCR(lang=lang)
-        
-        self.confidence_threshold = confidence_threshold
-        init_time = time.time() - start_time
-        logger.info(f"✓ Fast OCR initialized in {init_time:.2f}s")
-    
-    def process_frame_with_spatial_context(
-        self, 
-        frame: np.ndarray, 
-        depth_map: Optional[np.ndarray] = None,
-        resize_factor: float = 1.0
-    ) -> List[Dict]:
-        """
-        Process frame with spatial context fusion
-        
-        Args:
-            frame: Input frame
-            depth_map: Optional depth map from Phase 1 (same size as frame)
-            resize_factor: Resize frame before OCR
-        
-        Returns:
-            List of text objects with spatial context
-        """
-        start_time = time.time()
-        h, w = frame.shape[:2]
-        
-        # Resize frame if needed
-        if resize_factor != 1.0:
-            new_w = int(w * resize_factor)
-            new_h = int(h * resize_factor)
-            frame_resized = cv2.resize(frame, (new_w, new_h))
-            logger.info(f"Resized frame: {w}x{h} -> {new_w}x{new_h}")
-        else:
-            frame_resized = frame
-        
-        # Run OCR
-        try:
-            results = self.ocr.predict(frame_resized)
-        except AttributeError:
-            results = self.ocr.ocr(frame_resized)
-        
-        ocr_time = time.time() - start_time
-        logger.info(f"⚡ OCR processing time: {ocr_time:.2f}s")
-        
-        if results is None or len(results) == 0:
-            logger.warning("No text detected")
-            return []
-        
-        # Parse results with spatial context
-        text_objects = []
-        result = results[0] if isinstance(results, list) else results
-        
-        if hasattr(result, '__dict__') and 'rec_texts' in result.__dict__:
-            rec_texts = result.rec_texts
-            rec_scores = result.rec_scores
-            rec_polys = result.rec_polys
+            self.processor = DonutProcessor.from_pretrained(model_name)
+            self.model = VisionEncoderDecoderModel.from_pretrained(model_name)
             
-            for text, confidence, bbox in zip(rec_texts, rec_scores, rec_polys):
-                if confidence < self.confidence_threshold:
-                    continue
-                
-                # Convert bbox
-                if hasattr(bbox, 'tolist'):
-                    bbox = bbox.tolist()
-                
-                # Scale bbox back if resized
-                if resize_factor != 1.0:
-                    scale = 1.0 / resize_factor
-                    bbox = [[int(x * scale), int(y * scale)] for x, y in bbox]
-                
-                # Calculate center point
-                x_coords = [point[0] for point in bbox]
-                y_coords = [point[1] for point in bbox]
-                x_center = int(np.mean(x_coords))
-                y_center = int(np.mean(y_coords))
-                
-                # Determine direction based on horizontal position
-                if x_center < w / 3:
-                    direction = "left"
-                elif x_center > 2 * w / 3:
-                    direction = "right"
-                else:
-                    direction = "center"
-                
-                # Get distance from depth map if available
-                distance_m = None
-                if depth_map is not None:
-                    # Sample depth at text center (ensure within bounds)
-                    y_sample = min(y_center, depth_map.shape[0] - 1)
-                    x_sample = min(x_center, depth_map.shape[1] - 1)
-                    depth_value = depth_map[y_sample, x_sample]
-                    
-                    # Convert depth to meters (this depends on your depth map format)
-                    # Assuming depth map is normalized [0, 1] where 0=far, 1=near
-                    # Adjust this formula based on your Phase 1 depth map format
-                    if depth_value > 0:
-                        distance_m = round(float(10.0 * (1.0 - depth_value)), 1)
-                
-                text_obj = {
-                    "content": text,
-                    "confidence": round(float(confidence), 2),
-                    "direction": direction
-                }
-                
-                # Only add distance if available
-                if distance_m is not None:
-                    text_obj["distance_m"] = distance_m
-                
-                text_objects.append(text_obj)
-        
-        logger.info(f"✓ Found {len(text_objects)} text objects (above {self.confidence_threshold} confidence)")
-        return text_objects
-
-
-class VideoFrameCapture:
-    """Optimized video frame capture"""
+            # Move to GPU if available
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.model.to(self.device)
+            self.model.eval()
+            
+            logger.info(f"Model loaded successfully on {self.device}")
+            
+        except Exception as e:
+            logger.error(f"Failed to load model: {e}")
+            raise
     
-    def __init__(self, video_path: str):
-        self.video_path = video_path
-        self.cap = cv2.VideoCapture(video_path)
-        
-        if not self.cap.isOpened():
-            raise ValueError(f"Cannot open video file: {video_path}")
-        
-        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
-        self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.duration = self.total_frames / self.fps
-        
-        logger.info(f"Video: {video_path} | {self.duration:.1f}s | {self.total_frames} frames @ {self.fps} fps")
-    
-    def get_center_frame(self) -> tuple:
-        """Capture the center frame of the video"""
-        center_frame_num = self.total_frames // 2
-        center_time = center_frame_num / self.fps
-        
-        logger.info(f"📸 Seeking to center frame #{center_frame_num} (at {center_time:.2f}s)")
-        
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, center_frame_num)
-        ret, frame = self.cap.read()
-        
-        if not ret:
-            raise ValueError("Cannot read center frame")
-        
-        return frame, center_frame_num, center_time
-    
-    def release(self):
-        self.cap.release()
-
-
-class DepthMapLoader:
-    """Load depth map from Phase 1 (if available)"""
-    
-    @staticmethod
-    def load_depth_map(depth_path: str) -> Optional[np.ndarray]:
+    def extract_text_from_frame(self, frame):
         """
-        Load depth map from Phase 1
+        Extract text from a frame (for Phase 1 integration)
         
         Args:
-            depth_path: Path to depth map image
+            frame: OpenCV frame (numpy array) or PIL Image
         
         Returns:
-            Depth map as numpy array or None if not found
+            dict: OCR results with extracted text
         """
-        if not Path(depth_path).exists():
-            logger.warning(f"Depth map not found at {depth_path}")
+        start_time = time.time()
+        
+        try:
+            # Handle different input types
+            if isinstance(frame, Image.Image):
+                pil_image = frame.convert("RGB")
+                logger.info(f"Input: PIL Image {pil_image.size}")
+            elif isinstance(frame, np.ndarray):
+                logger.info(f"Input: NumPy array {frame.shape}")
+                
+                # IMPORTANT: Check if already RGB or BGR
+                # If coming from cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), it's already RGB
+                # If directly from cv2.VideoCapture, it's BGR
+                
+                if len(frame.shape) == 2:  # Grayscale
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+                elif frame.shape[2] == 4:  # RGBA
+                    frame_rgb = frame[:, :, :3]  # Take RGB channels
+                else:  # Assume it's already RGB (caller should convert)
+                    frame_rgb = frame
+                
+                pil_image = Image.fromarray(frame_rgb.astype('uint8'))
+                logger.info(f"Converted to PIL: {pil_image.size}")
+            else:
+                raise ValueError(f"Unsupported frame type: {type(frame)}")
+            
+            # Process with model
+            pixel_values = self.processor(
+                images=pil_image, 
+                return_tensors="pt"
+            ).pixel_values.to(self.device)
+            
+            # Generate text
+            task_prompt = "<s_ocr>"
+            decoder_input_ids = self.processor.tokenizer(
+                task_prompt, 
+                return_tensors="pt"
+            ).input_ids.to(self.device)
+            
+            with torch.no_grad():
+                generated_ids = self.model.generate(
+                    pixel_values,
+                    decoder_input_ids=decoder_input_ids,
+                    max_length=512,
+                    num_beams=1,
+                    early_stopping=True
+                )
+            
+            # Decode result
+            generated_text = self.processor.batch_decode(
+                generated_ids, 
+                skip_special_tokens=True
+            )[0].strip()
+            
+            elapsed_time = time.time() - start_time
+            logger.info(f"OCR completed: {len(generated_text)} characters in {elapsed_time:.2f}s")
+            
+            return {
+                "success": True,
+                "text": generated_text,
+                "processing_time": elapsed_time
+            }
+            
+        except Exception as e:
+            logger.error(f"Frame processing failed: {e}")
+            import traceback
+            traceback.print_exc()
+            elapsed_time = time.time() - start_time
+            return {
+                "success": False,
+                "text": "",
+                "error": str(e),
+                "processing_time": elapsed_time
+            }
+    
+    def process_image(self, image_path):
+        """
+        Process an image and extract text
+        
+        Args:
+            image_path: Path to input image
+        
+        Returns:
+            dict: OCR results with extracted text
+        """
+        start_time = time.time()
+        
+        try:
+            # Load image
+            if not os.path.exists(image_path):
+                raise FileNotFoundError(f"Image not found: {image_path}")
+            
+            logger.info(f"Processing: {image_path}")
+            
+            # Read image
+            pil_image = Image.open(image_path).convert("RGB")
+            
+            # Process with model
+            pixel_values = self.processor(
+                images=pil_image, 
+                return_tensors="pt"
+            ).pixel_values.to(self.device)
+            
+            # Generate text
+            task_prompt = "<s_ocr>"
+            decoder_input_ids = self.processor.tokenizer(
+                task_prompt, 
+                return_tensors="pt"
+            ).input_ids.to(self.device)
+            
+            with torch.no_grad():
+                generated_ids = self.model.generate(
+                    pixel_values,
+                    decoder_input_ids=decoder_input_ids,
+                    max_length=512,
+                    num_beams=1,
+                    early_stopping=True
+                )
+            
+            # Decode result
+            generated_text = self.processor.batch_decode(
+                generated_ids, 
+                skip_special_tokens=True
+            )[0].strip()
+            
+            elapsed_time = time.time() - start_time
+            logger.info(f"Processing completed in {elapsed_time:.2f}s")
+            
+            return {
+                "success": True,
+                "text": generated_text,
+                "processing_time": elapsed_time
+            }
+            
+        except Exception as e:
+            logger.error(f"Processing failed: {e}")
+            return {
+                "success": False,
+                "text": "",
+                "error": str(e)
+            }
+    
+    def create_output_json(self, text_content, image_path):
+        """
+        Create structured JSON output
+        
+        Args:
+            text_content: Extracted text
+            image_path: Source image path
+        
+        Returns:
+            dict: Structured JSON output
+        """
+        text_objects = []
+        
+        if text_content:
+            # Split text into lines
+            lines = [line.strip() for line in text_content.split('\n') if line.strip()]
+            
+            for line in lines:
+                # Determine direction based on line position
+                # (simplified - all centered for medical prescriptions)
+                text_objects.append({
+                    "content": line,
+                    "confidence": 1.0,
+                    "direction": "center"
+                })
+        
+        output = {
+            "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "text_objects": text_objects,
+            "source_image": os.path.basename(image_path)
+        }
+        
+        return output
+
+
+def process_single_image(image_path, output_path="output.json"):
+    """
+    Process a single image and save results to JSON
+    
+    Args:
+        image_path: Path to input image
+        output_path: Path to save JSON output
+    """
+    logger.info("=" * 60)
+    logger.info("MEDICAL OCR PROCESSOR")
+    logger.info("=" * 60)
+    
+    try:
+        # Initialize OCR
+        ocr = MedicalOCRProcessor()
+        
+        # Process image
+        result = ocr.process_image(image_path)
+        
+        if not result["success"]:
+            logger.error(f"Failed to process image: {result.get('error', 'Unknown error')}")
             return None
         
-        try:
-            depth_map = cv2.imread(depth_path, cv2.IMREAD_GRAYSCALE)
-            if depth_map is not None:
-                # Normalize to [0, 1]
-                depth_map = depth_map.astype(np.float32) / 255.0
-                logger.info(f"✓ Loaded depth map from {depth_path}")
-                return depth_map
-        except Exception as e:
-            logger.warning(f"Failed to load depth map: {e}")
+        # Create structured output
+        output_json = ocr.create_output_json(result["text"], image_path)
         
+        # Save to file
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(output_json, f, indent=2, ensure_ascii=False)
+        
+        logger.info(f"Results saved to: {output_path}")
+        
+        # Display results
+        logger.info("\n" + "=" * 60)
+        logger.info("EXTRACTED TEXT")
+        logger.info("=" * 60)
+        logger.info(result["text"])
+        logger.info("\n" + "=" * 60)
+        logger.info("JSON OUTPUT")
+        logger.info("=" * 60)
+        print(json.dumps(output_json, indent=2))
+        logger.info("=" * 60)
+        
+        return output_json
+        
+    except Exception as e:
+        logger.error(f"Error: {e}")
         return None
 
 
-class OCRResultManager:
-    """Result manager with visualization"""
+def process_multiple_images(image_folder, output_folder="outputs"):
+    """
+    Process multiple images from a folder
     
-    def __init__(self, output_dir='ocr_results'):
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(exist_ok=True)
+    Args:
+        image_folder: Path to folder containing images
+        output_folder: Path to save JSON outputs
+    """
+    logger.info("=" * 60)
+    logger.info("BATCH MEDICAL OCR PROCESSOR")
+    logger.info("=" * 60)
     
-    def save_results(self, results: Dict, filename='ocr_output.json'):
-        output_path = self.output_dir / filename
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=2, ensure_ascii=False)
-        logger.info(f"✓ Results saved to {output_path}")
-        return output_path
+    # Create output folder
+    os.makedirs(output_folder, exist_ok=True)
     
-    def visualize_results(
-        self, 
-        frame: np.ndarray, 
-        text_objects: List[Dict], 
-        output_name='ocr_visualization.jpg'
-    ):
-        """Visualize OCR results with direction and distance labels"""
-        vis_frame = frame.copy()
-        h, w = frame.shape[:2]
+    # Supported image formats
+    supported_formats = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')
+    
+    # Find all images
+    image_files = [
+        f for f in os.listdir(image_folder) 
+        if f.lower().endswith(supported_formats)
+    ]
+    
+    if not image_files:
+        logger.warning(f"No images found in {image_folder}")
+        return
+    
+    logger.info(f"Found {len(image_files)} images to process\n")
+    
+    try:
+        # Initialize OCR once for all images
+        ocr = MedicalOCRProcessor()
         
-        for obj in text_objects:
-            text = obj['content']
-            confidence = obj['confidence']
-            direction = obj['direction']
-            distance = obj.get('distance_m', None)
+        # Process each image
+        results = []
+        for idx, image_file in enumerate(image_files, 1):
+            logger.info(f"\n[{idx}/{len(image_files)}] Processing {image_file}")
             
-            # Calculate approximate bbox for visualization
-            # Since we don't store bbox in output, estimate it for visualization
-            if direction == "left":
-                x_center = w // 6
-            elif direction == "right":
-                x_center = 5 * w // 6
-            else:
-                x_center = w // 2
-            
-            y_center = h // 2
-            
-            # Create label with all info
-            if distance is not None:
-                label = f"{text} | {direction} | {distance}m"
-            else:
-                label = f"{text} | {direction}"
-            
-            # Draw label background
-            (label_w, label_h), baseline = cv2.getTextSize(
-                label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2
+            image_path = os.path.join(image_folder, image_file)
+            output_path = os.path.join(
+                output_folder, 
+                f"{os.path.splitext(image_file)[0]}_output.json"
             )
             
-            # Position based on direction
-            if direction == "left":
-                x = 10
-            elif direction == "right":
-                x = w - label_w - 10
+            # Process image
+            result = ocr.process_image(image_path)
+            
+            if result["success"]:
+                # Create and save JSON
+                output_json = ocr.create_output_json(result["text"], image_path)
+                
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    json.dump(output_json, f, indent=2, ensure_ascii=False)
+                
+                logger.info(f"Saved: {output_path}")
+                results.append(output_json)
             else:
-                x = (w - label_w) // 2
-            
-            y = 30 + text_objects.index(obj) * 35
-            
-            # Draw background and text
-            cv2.rectangle(vis_frame, (x - 5, y - label_h - 5), 
-                         (x + label_w + 5, y + 5), (0, 255, 0), -1)
-            cv2.putText(vis_frame, label, (x, y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
-            
-            # Draw direction indicator
-            if direction == "left":
-                cv2.arrowedLine(vis_frame, (w//2, h//2), (x_center, y_center), 
-                               (255, 0, 0), 3, tipLength=0.3)
-            elif direction == "right":
-                cv2.arrowedLine(vis_frame, (w//2, h//2), (x_center, y_center), 
-                               (0, 0, 255), 3, tipLength=0.3)
-            else:
-                cv2.circle(vis_frame, (x_center, y_center), 10, (0, 255, 255), -1)
+                logger.error(f"Failed: {image_file}")
         
-        # Draw center crosshair
-        cv2.drawMarker(vis_frame, (w//2, h//2), (255, 255, 255), 
-                      cv2.MARKER_CROSS, 20, 2)
+        logger.info("\n" + "=" * 60)
+        logger.info(f"BATCH PROCESSING COMPLETE: {len(results)}/{len(image_files)} successful")
+        logger.info("=" * 60)
         
-        output_path = self.output_dir / output_name
-        cv2.imwrite(str(output_path), vis_frame)
-        logger.info(f"✓ Visualization saved to {output_path}")
-        return vis_frame
+        return results
+        
+    except Exception as e:
+        logger.error(f"Batch processing error: {e}")
+        return None
 
 
 def main():
-    """Main execution with spatial context fusion"""
+    """Main execution function"""
     
-    # ===================== CONFIGURATION =====================
-    VIDEO_PATH = "videos/test.mp4"
-    DEPTH_MAP_PATH = "depth_results/center_frame_depth.png"  # Optional from Phase 1
-    CONFIDENCE_THRESHOLD = 0.75
-    RESIZE_FACTOR = 0.8
-    # =========================================================
+    # Check command line arguments
+    if len(sys.argv) > 1:
+        input_path = sys.argv[1]
+        output_path = sys.argv[2] if len(sys.argv) > 2 else "output.json"
+    else:
+        # Default: process input/test.jpg
+        input_path = "input/test.jpg"
+        output_path = "output.json"
     
-    total_start = time.time()
-    
-    logger.info("=" * 70)
-    logger.info("⚡ Phase 2 - OCR with Spatial Context Fusion")
-    logger.info("=" * 70)
-    
-    try:
-        # Initialize
-        video_capture = VideoFrameCapture(VIDEO_PATH)
-        ocr_processor = FastOCRProcessor(lang='en', confidence_threshold=CONFIDENCE_THRESHOLD)
-        result_manager = OCRResultManager()
-        
-        # Load depth map if available (from Phase 1)
-        depth_map = DepthMapLoader.load_depth_map(DEPTH_MAP_PATH)
-        
-        # Capture center frame
-        logger.info("\n[Step 1] Capturing center frame...")
-        capture_start = time.time()
-        frame, frame_number, frame_time = video_capture.get_center_frame()
-        capture_time = time.time() - capture_start
-        logger.info(f"⚡ Frame capture time: {capture_time:.3f}s")
-        logger.info(f"Frame #{frame_number} at {frame_time:.2f}s")
-        
-        # Resize depth map to match frame if needed
-        if depth_map is not None:
-            if depth_map.shape[:2] != frame.shape[:2]:
-                depth_map = cv2.resize(depth_map, (frame.shape[1], frame.shape[0]))
-                logger.info(f"Resized depth map to match frame: {frame.shape[:2]}")
-        
-        # Process with OCR and spatial context
-        logger.info(f"\n[Step 2] Processing with OCR + Spatial Context...")
-        text_objects = ocr_processor.process_frame_with_spatial_context(
-            frame, 
-            depth_map=depth_map,
-            resize_factor=RESIZE_FACTOR
-        )
-        
-        # Generate structured output
-        logger.info("\n[Step 3] Generating structured output...")
-        timestamp = datetime.now().isoformat()
-        
-        ocr_result = {
-            "timestamp": timestamp,
-            "text_objects": text_objects
-        }
-        
-        # Save results
-        result_manager.save_results(ocr_result)
-        
-        # Visualization
-        logger.info("\n[Step 4] Creating visualization...")
-        vis_frame = result_manager.visualize_results(frame, text_objects)
-        
-        # Display the processed frame
-        logger.info("\nDisplaying processed frame (press any key to close)...")
-        cv2.imshow('OCR Results - Spatial Context', vis_frame)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        
-        # Summary
-        total_time = time.time() - total_start
-        
-        logger.info("\n" + "=" * 70)
-        logger.info("⚡ PERFORMANCE SUMMARY")
-        logger.info("=" * 70)
-        logger.info(f"Total processing time: {total_time:.2f}s")
-        logger.info(f"Frame: #{frame_number} at {frame_time:.2f}s")
-        logger.info(f"Depth map: {'Loaded' if depth_map is not None else 'Not available'}")
-        
-        logger.info("\n" + "=" * 70)
-        logger.info("DETECTED TEXT WITH SPATIAL CONTEXT")
-        logger.info("=" * 70)
-        
-        if text_objects:
-            for i, obj in enumerate(text_objects, 1):
-                logger.info(f"\n  [{i}] '{obj['content']}'")
-                logger.info(f"      Confidence: {obj['confidence']:.2%}")
-                logger.info(f"      Direction: {obj['direction']}")
-                if 'distance_m' in obj:
-                    logger.info(f"      Distance: {obj['distance_m']}m")
-        else:
-            logger.info("\n  No text detected")
-        
-        logger.info("\n" + "=" * 70)
-        logger.info("JSON OUTPUT PREVIEW:")
-        logger.info("=" * 70)
-        print(json.dumps(ocr_result, indent=2))
-        logger.info("=" * 70)
-        
-        video_capture.release()
-        
-    except Exception as e:
-        logger.error(f"Error: {str(e)}", exc_info=True)
-        raise
+    # Check if input is a file or folder
+    if os.path.isfile(input_path):
+        # Process single image
+        process_single_image(input_path, output_path)
+    elif os.path.isdir(input_path):
+        # Process all images in folder
+        output_folder = output_path if output_path != "output.json" else "outputs"
+        process_multiple_images(input_path, output_folder)
+    else:
+        logger.error(f"Input not found: {input_path}")
+        logger.info("\nUsage:")
+        logger.info("  Single image: python script.py <image_path> [output.json]")
+        logger.info("  Batch mode:   python script.py <folder_path> [output_folder]")
+        logger.info("  Default:      python script.py  (processes input/test.jpg)")
 
 
 if __name__ == "__main__":

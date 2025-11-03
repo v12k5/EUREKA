@@ -1,6 +1,14 @@
-paddlepaddle>=2.5.0
-paddleocr>=2.7.0
-opencv-python>=4.8.0
-numpy>=1.24.0
-pyspellchecker>=0.7.2
-Pillow>=10.0.0
+# Core OCR
+paddleocr>=2.5.0
+
+# PaddlePaddle CPU build (if you have GPU, replace with the appropriate GPU wheel)
+paddlepaddle>=2.4.2
+
+# Imaging & plotting
+opencv-python
+Pillow
+matplotlib
+numpy
+
+# (optional) progress bar
+tqdm

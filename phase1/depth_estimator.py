@@ -224,7 +224,7 @@ if __name__ == "__main__":
     import cv2
     
     # Initialize estimator
-    estimator = DepthEstimator(model_path="weights/FastDepthV2_L1GN_Best.pth")
+    estimator = DepthEstimator(model_path="Weights/FastDepthV2_L1GN_Best.pth")
     
     # Load test image
     frame = cv2.imread("test_image.jpg")
