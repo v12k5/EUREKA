@@ -1,0 +1,29 @@
+{
+  "ocr": {
+    "language": "en",
+    "confidence_threshold": 0.75,
+    "use_angle_classification": true,
+    "enable_spell_check": false
+  },
+  "video": {
+    "input_path": "videos/test.mp4",
+    "num_frames_to_capture": 3,
+    "frame_interval_ms": 100,
+    "seek_to_time_seconds": 0
+  },
+  "output": {
+    "save_json": true,
+    "save_visualization": true,
+    "output_directory": "ocr_results"
+  },
+  "spatial_context": {
+    "enable_direction_detection": true,
+    "enable_vertical_position": true,
+    "simulate_depth": false
+  },
+  "logging": {
+    "level": "INFO",
+    "save_to_file": false,
+    "log_file": "phase2.log"
+  }
+}
